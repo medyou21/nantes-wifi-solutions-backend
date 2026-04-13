@@ -1,95 +1,134 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import bcrypt from "bcrypt";
+import { faker } from "@faker-js/faker";
+
+import Admin from "../models/admin.model";
+import Offer from "../models/offer.model";
+import Contact from "../models/contact.model";
 
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI!;
+const MONGO_URI = process.env.MONGO_URI;
 
-const contactSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  phone: String,
-  service: String,
-  message: String,
-  createdAt: { type: Date, default: Date.now },
-});
+if (!MONGO_URI) {
+  throw new Error("❌ MONGO_URI non défini");
+}
 
-const offerSchema = new mongoose.Schema({
-  title: String,
-  price: Number,
-  period: String,
-  features: [String],
-  highlight: Boolean,
-  order: Number,
-  createdAt: { type: Date, default: Date.now },
-});
-
-const Contact = mongoose.model("Contact", contactSchema);
-const Offer = mongoose.model("Offer", offerSchema);
-
+// ─────────────────────────────────────────────
+// 📦 OFFERS FIXES
+// ─────────────────────────────────────────────
 const offers = [
   {
     title: "Basic",
     price: 79,
-    period: null,
-    features: ["Diagnostic Wi-Fi", "Optimisation réseau", "Vérification sécurité"],
+    description: "Diagnostic Wi-Fi complet pour votre réseau.",
+    features: ["Audit Wi-Fi", "Optimisation", "Conseils sécurité"],
     highlight: false,
     order: 1,
   },
   {
     title: "Confort",
     price: 199,
-    period: null,
-    features: ["Diagnostic Wi-Fi", "Installation avancée", "Matériel inclus"],
+    description: "Installation et optimisation avancée.",
+    features: ["Installation complète", "Configuration réseau", "Support inclus"],
     highlight: true,
     order: 2,
   },
   {
     title: "Pro Entreprise",
     price: 499,
-    period: "/mois",
-    features: ["Tous les forfaits Basic inclus", "Réseau professionnel", "Surveillance en continu"],
+    description: "Solution professionnelle multi-sites.",
+    features: ["Multi-access points", "Monitoring", "Maintenance"],
     highlight: false,
     order: 3,
   },
 ];
 
+// ─────────────────────────────────────────────
+// 🧠 SERVICES LIST
+// ─────────────────────────────────────────────
+const services = [
+  "diagnostic",
+  "installation",
+  "securite",
+  "maintenance",
+];
+
+// ─────────────────────────────────────────────
+// 🌱 SEED
+// ─────────────────────────────────────────────
 const seed = async () => {
   try {
-    console.log("🔌 Connexion à MongoDB Atlas...");
-    await mongoose.connect(MONGO_URI);
-    console.log("✅ Connecté !");
+    console.log("🔌 Connexion MongoDB...");
+    await mongoose.connect(MONGO_URI!);
+    console.log("✅ Connecté");
 
-    // Vider les collections existantes
-    await Offer.deleteMany({});
-    await Contact.deleteMany({});
-    console.log("🗑️  Collections vidées");
+    // 🧹 CLEAN
+    await Promise.all([
+      Admin.deleteMany({}),
+      Offer.deleteMany({}),
+      Contact.deleteMany({}),
+    ]);
 
-    // Insérer les offres
-    await Offer.insertMany(offers);
-    console.log("✅ 3 offres insérées");
+    console.log("🗑️ Base nettoyée");
 
-    // Insérer un contact de test
-    await Contact.create({
-      name: "Jean Dupont",
-      email: "jean.dupont@example.com",
-      phone: "06 12 34 56 78",
-      service: "diagnostic",
-      message: "Mon Wi-Fi est très lent dans le salon.",
+    // ─────────────────────────────
+    // 🔐 ADMIN
+    // ─────────────────────────────
+    const hashedPassword = await bcrypt.hash("123456", 10);
+
+    await Admin.create({
+      email: "admin@nantes-wifi.fr",
+      password: hashedPassword,
+      role: "superadmin",
     });
-    console.log("✅ 1 contact de test inséré");
 
-    console.log("\n🎉 Seed terminé avec succès !");
-    console.log("📦 Collections créées sur MongoDB Atlas :");
-    console.log("   - offers   :", await Offer.countDocuments(), "documents");
-    console.log("   - contacts :", await Contact.countDocuments(), "documents");
+    console.log("👤 Admin créé");
+
+    // ─────────────────────────────
+    // 📦 OFFERS
+    // ─────────────────────────────
+    await Offer.insertMany(offers);
+    console.log("📦 Offers insérées");
+
+    // ─────────────────────────────
+    // 🧪 CONTACTS FAKE (FAKER)
+    // ─────────────────────────────
+    const fakeContacts = Array.from({ length: 50 }).map(() => ({
+      name: faker.person.fullName(),
+      email: faker.internet.email(),
+      phone: faker.phone.number({ style: "national" }),
+      service: faker.helpers.arrayElement(services),
+      message: faker.lorem.sentences({ min: 1, max: 3 }),
+      createdAt: faker.date.recent({ days: 30 }),
+    }));
+
+    await Contact.insertMany(fakeContacts);
+
+    console.log(`📩 ${fakeContacts.length} contacts Faker insérés`);
+
+    // ─────────────────────────────
+    // 📊 STATS
+    // ─────────────────────────────
+    const [a, o, c] = await Promise.all([
+      Admin.countDocuments(),
+      Offer.countDocuments(),
+      Contact.countDocuments(),
+    ]);
+
+    console.log("\n🎉 SEED TERMINÉ !");
+    console.log("--------------------------------");
+    console.log("👤 Admins   :", a);
+    console.log("📦 Offers   :", o);
+    console.log("📩 Contacts :", c);
+    console.log("--------------------------------");
 
   } catch (error) {
     console.error("❌ Erreur seed :", error);
   } finally {
     await mongoose.disconnect();
-    console.log("🔌 Déconnecté de MongoDB");
-    process.exit(0);
+    console.log("🔌 Déconnecté MongoDB");
   }
 };
 
