@@ -1,22 +1,33 @@
+// Importation de mongoose pour gérer la connexion MongoDB
 import mongoose from "mongoose";
+
+// Chargement des variables d'environnement (.env)
 import dotenv from "dotenv";
+
+// Librairie pour hasher les mots de passe
 import bcrypt from "bcrypt";
+
+// Librairie pour générer des données fictives (tests / seed)
 import { faker } from "@faker-js/faker";
 
+// Importation des modèles MongoDB
 import Admin from "../models/admin.model";
 import Offer from "../models/offer.model";
 import Contact from "../models/contact.model";
 
+// Chargement des variables d'environnement
 dotenv.config();
 
+// Récupération de l'URI MongoDB depuis .env
 const MONGO_URI = process.env.MONGO_URI;
 
+// Sécurité : arrêt si la variable n'existe pas
 if (!MONGO_URI) {
   throw new Error("❌ MONGO_URI non défini");
 }
 
 // ─────────────────────────────────────────────
-// 📦 OFFERS FIXES
+// 📦 OFFRES FIXES (données initiales du système)
 // ─────────────────────────────────────────────
 const offers = [
   {
@@ -46,7 +57,7 @@ const offers = [
 ];
 
 // ─────────────────────────────────────────────
-// 🧠 SERVICES LIST
+// 🧠 LISTE DES SERVICES (utilisée pour contacts fake)
 // ─────────────────────────────────────────────
 const services = [
   "diagnostic",
@@ -56,26 +67,33 @@ const services = [
 ];
 
 // ─────────────────────────────────────────────
-// 🌱 SEED
+// 🌱 SCRIPT DE SEEDING (initialisation base de données)
 // ─────────────────────────────────────────────
 const seed = async () => {
   try {
     console.log("🔌 Connexion MongoDB...");
-    await mongoose.connect(MONGO_URI!);
-    console.log("✅ Connecté");
 
-    // 🧹 CLEAN
+    // Connexion à la base MongoDB
+    await mongoose.connect(MONGO_URI!);
+
+    console.log("✅ Connecté à MongoDB");
+
+    // ─────────────────────────────
+    // 🧹 NETTOYAGE DE LA BASE
+    // ─────────────────────────────
+    // Supprime toutes les données existantes pour repartir proprement
     await Promise.all([
       Admin.deleteMany({}),
       Offer.deleteMany({}),
       Contact.deleteMany({}),
     ]);
 
-    console.log("🗑️ Base nettoyée");
+    console.log("🗑️ Base de données nettoyée");
 
     // ─────────────────────────────
-    // 🔐 ADMIN
+    // 🔐 CRÉATION ADMIN PAR DÉFAUT
     // ─────────────────────────────
+    // Hash du mot de passe pour sécurité
     const hashedPassword = await bcrypt.hash("123456", 10);
 
     await Admin.create({
@@ -84,16 +102,17 @@ const seed = async () => {
       role: "superadmin",
     });
 
-    console.log("👤 Admin créé");
+    console.log("👤 Admin créé avec succès");
 
     // ─────────────────────────────
-    // 📦 OFFERS
+    // 📦 INSERTION DES OFFRES
     // ─────────────────────────────
     await Offer.insertMany(offers);
-    console.log("📦 Offers insérées");
+
+    console.log("📦 Offres insérées");
 
     // ─────────────────────────────
-    // 🧪 CONTACTS FAKE (FAKER)
+    // 🧪 GÉNÉRATION DE CONTACTS FACTICES
     // ─────────────────────────────
     const fakeContacts = Array.from({ length: 50 }).map(() => ({
       name: faker.person.fullName(),
@@ -104,32 +123,37 @@ const seed = async () => {
       createdAt: faker.date.recent({ days: 30 }),
     }));
 
+    // Insertion des contacts fake en base
     await Contact.insertMany(fakeContacts);
 
-    console.log(`📩 ${fakeContacts.length} contacts Faker insérés`);
+    console.log(`📩 ${fakeContacts.length} contacts générés`);
 
     // ─────────────────────────────
-    // 📊 STATS
+    // 📊 STATISTIQUES FINALES
     // ─────────────────────────────
-    const [a, o, c] = await Promise.all([
+    const [adminCount, offerCount, contactCount] = await Promise.all([
       Admin.countDocuments(),
       Offer.countDocuments(),
       Contact.countDocuments(),
     ]);
 
-    console.log("\n🎉 SEED TERMINÉ !");
+    console.log("\n🎉 SEED TERMINÉ AVEC SUCCÈS !");
     console.log("--------------------------------");
-    console.log("👤 Admins   :", a);
-    console.log("📦 Offers   :", o);
-    console.log("📩 Contacts :", c);
+    console.log("👤 Admins   :", adminCount);
+    console.log("📦 Offers   :", offerCount);
+    console.log("📩 Contacts :", contactCount);
     console.log("--------------------------------");
 
   } catch (error) {
+    // Gestion des erreurs globales
     console.error("❌ Erreur seed :", error);
+
   } finally {
+    // Fermeture propre de la connexion MongoDB
     await mongoose.disconnect();
-    console.log("🔌 Déconnecté MongoDB");
+    console.log("🔌 Déconnecté de MongoDB");
   }
 };
 
+// Exécution du script
 seed();

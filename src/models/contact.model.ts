@@ -1,26 +1,77 @@
+// Importation des éléments nécessaires depuis mongoose
 import { Schema, model, Document } from 'mongoose';
 
+/**
+ * Interface TypeScript représentant un document Contact dans MongoDB
+ * Elle permet de typer correctement les données du modèle
+ */
 export interface IContact extends Document {
-  name: string;
-  email: string;
-  phone?: string;
-  company?: string;
-  service?: string;
-  message: string;
-  createdAt: Date;
-  updatedAt: Date;
+  name: string;        // Nom du contact (obligatoire)
+  email: string;       // Email du contact (obligatoire)
+  phone?: string;      // Numéro de téléphone (optionnel)
+  company?: string;    // Nom de l'entreprise (optionnel)
+  service?: string;    // Service demandé (optionnel)
+  message: string;     // Message envoyé (obligatoire)
+
+  createdAt: Date;     // Date de création (ajoutée automatiquement)
+  updatedAt: Date;     // Date de mise à jour (ajoutée automatiquement)
 }
 
+/**
+ * Définition du schéma Mongoose pour la collection "contacts"
+ * Ce schéma définit la structure des documents stockés dans MongoDB
+ */
 const contactSchema = new Schema<IContact>(
   {
-    name:    { type: String, required: true, trim: true },
-    email:   { type: String, required: true, trim: true, lowercase: true },
-    phone:   { type: String, trim: true },
-    company: { type: String, trim: true },
-    service: { type: String, trim: true }, // ✅ ajouté
-    message: { type: String, required: true },
+    // Nom de l'utilisateur
+    name: {
+      type: String,
+      required: true, // champ obligatoire
+      trim: true      // supprime les espaces inutiles
+    },
+
+    // Email de l'utilisateur
+    email: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true // convertit automatiquement en minuscules
+    },
+
+    // Téléphone (facultatif)
+    phone: {
+      type: String,
+      trim: true
+    },
+
+    // Nom de l'entreprise (facultatif)
+    company: {
+      type: String,
+      trim: true
+    },
+
+    // Service demandé (ex: devis, support, etc.)
+    service: {
+      type: String,
+      trim: true
+    },
+
+    // Message envoyé par l'utilisateur
+    message: {
+      type: String,
+      required: true
+    }
   },
+
+  /**
+   * Options du schéma :
+   * timestamps: true → ajoute automatiquement createdAt et updatedAt
+   */
   { timestamps: true }
 );
 
+/**
+ * Export du modèle Contact
+ * Permet d'effectuer des opérations CRUD sur la collection "contacts"
+ */
 export default model<IContact>('Contact', contactSchema);
