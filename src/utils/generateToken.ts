@@ -16,7 +16,7 @@ interface TokenPayload {
  */
 export const generateToken = (
   payload: TokenPayload,
-  expiresIn: string = "1d"
+  expiresIn: jwt.SignOptions["expiresIn"] = "1d"
 ): string => {
   // Sécurité : vérification de la clé secrète
   const secret = process.env.JWT_SECRET;
