@@ -1,6 +1,17 @@
 import prisma from "../src/config/prisma";
+import bcrypt from "bcrypt";
 
 async function main(): Promise<void> {
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@nantes-wifi.fr";
+  const adminPassword = process.env.ADMIN_PASSWORD || "ChangeMe-For-Production";
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
+
+  await prisma.admin.upsert({
+    where: { email: adminEmail.toLowerCase() },
+    update: { passwordHash, active: true },
+    create: { email: adminEmail.toLowerCase(), passwordHash },
+  });
+
   const service = await prisma.service.upsert({
     where: { slug: "wifi" },
     update: {},
