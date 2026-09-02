@@ -1,69 +1,39 @@
-// ─────────────────────────────────────────────
-// 📦 ENV CONFIG
-// ─────────────────────────────────────────────
-
-// Chargement des variables d'environnement (.env)
 import dotenv from "dotenv";
-dotenv.config(); // ⚠️ doit être exécuté en premier
+dotenv.config();
 
-// ─────────────────────────────────────────────
-// 🔒 VALIDATION DES VARIABLES CRITIQUES
-// ─────────────────────────────────────────────
-if (!process.env.MONGO_URI) {
-  throw new Error("❌ MONGO_URI manquant");
-}
+if (!process.env.MONGO_URI) throw new Error("MONGO_URI manquant");
+if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL manquant");
+if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET manquant");
 
-if (!process.env.JWT_SECRET) {
-  throw new Error("❌ JWT_SECRET manquant");
-}
-
-// ─────────────────────────────────────────────
-// 🚀 IMPORTS APP + DB
-// ─────────────────────────────────────────────
-
-// Application Express (routes + middleware + config)
 import app from "./app";
-
-// Connexion MongoDB
 import connectDB from "./config/db";
-
-// ─────────────────────────────────────────────
-// ⚙️ CONFIGURATION SERVEUR
-// ─────────────────────────────────────────────
+import { connectSQL, disconnectSQL } from "./config/prisma";
 
 const PORT = process.env.PORT || 5000;
 
-/**
- * 🚀 Démarrage du serveur
- * - connexion DB
- * - lancement API Express
- */
-const start = async () => {
+const start = async (): Promise<void> => {
   try {
-    // Connexion à la base de données
-    await connectDB();
-    console.log("✅ Base de données connectée");
+    await Promise.all([connectDB(), connectSQL()]);
+    console.log("MongoDB et PostgreSQL connectés");
 
-    // Lancement serveur HTTP
-    app.listen(PORT, () => {
-      console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`);
+    const server = app.listen(PORT, () => {
+      console.log(`Serveur lancé sur http://localhost:${PORT}`);
     });
 
+    const shutdown = async (): Promise<void> => {
+      server.close(async () => {
+        await disconnectSQL();
+        process.exit(0);
+      });
+    };
+
+    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", shutdown);
   } catch (error) {
-    console.error("❌ Erreur au démarrage du serveur :", error);
+    console.error("Erreur au démarrage du serveur :", error);
+    await disconnectSQL().catch(() => undefined);
     process.exit(1);
   }
 };
 
-// ─────────────────────────────────────────────
-// 🛑 GESTION ARRÊT PROPRE (PRODUCTION)
-// ─────────────────────────────────────────────
-process.on("SIGTERM", () => {
-  console.log("🛑 SIGTERM reçu - arrêt du serveur...");
-  process.exit(0);
-});
-
-// ─────────────────────────────────────────────
-// 🧠 LANCEMENT APP
-// ─────────────────────────────────────────────
-start();
+void start();

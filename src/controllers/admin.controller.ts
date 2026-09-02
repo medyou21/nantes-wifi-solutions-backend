@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import Contact from "../models/contact.model";
 import { generateToken } from "../utils/generateToken";
+import prisma from "../config/prisma";
+import bcrypt from "bcrypt";
 
 /**
  * Contrôleurs du back-office d'administration.
@@ -25,32 +27,23 @@ import { generateToken } from "../utils/generateToken";
  *  - 200 + { token }  → identifiants valides
  *  - 401              → email ou mot de passe incorrect
  */
-export const adminLogin = (req: Request, res: Response) => {
+export const adminLogin = async (req: Request, res: Response): Promise<Response> => {
   const { email, password } = req.body;
 
-  // Comparaison stricte avec les identifiants définis dans .env.
-  // Si ADMIN_EMAIL ou ADMIN_PASSWORD est absent, la condition échouera
-  // systématiquement, ce qui constitue un filet de sécurité implicite.
-  if (
-    email === process.env.ADMIN_EMAIL &&
-    password === process.env.ADMIN_PASSWORD
-  ) {
-    // Génère un JWT signé contenant l'email comme payload.
-    // Le token sera fourni par le client dans les requêtes protégées
-    // via l'en-tête Authorization: Bearer <token>.
-    const token = generateToken(email);
+  const admin = await prisma.admin.findUnique({
+    where: { email: String(email).trim().toLowerCase() },
+  });
 
+  if (admin?.active && await bcrypt.compare(String(password), admin.passwordHash)) {
+    const token = generateToken({ id: String(admin.id), role: admin.role });
     return res.status(200).json({
       message: "Connexion réussie",
       token,
+      admin: { id: admin.id, email: admin.email, role: admin.role },
     });
   }
 
-  // Réponse volontairement vague : ne pas distinguer "email inconnu"
-  // de "mot de passe incorrect" pour ne pas faciliter l'énumération.
-  return res.status(401).json({
-    message: "Email ou mot de passe incorrect",
-  });
+  return res.status(401).json({ message: "Email ou mot de passe incorrect" });
 };
 
 // ─────────────────────────────────────────────

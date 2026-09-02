@@ -1,0 +1,22 @@
+name: Backend certification CI
+
+on:
+  push:
+    branches: [main, certification-dwwm]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run build
+      - run: npm test
+        env:
+          JWT_SECRET: test-secret
+          MONGO_URI: mongodb://localhost:27017/test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
