@@ -1,144 +1,117 @@
-📡 Nantes WiFi Solutions — Backend API
+# Nantes WiFi Solutions - API
 
-API REST sécurisée et scalable développée avec Node.js, Express, TypeScript et MongoDB Atlas.
+API REST du projet de certification DWWM de Mohamed HAMDI.
 
-Elle gère :
+## Architecture de données
 
-📩 formulaires de contact
-📦 offres commerciales
-📧 génération et envoi de devis PDF
-🔐 authentification admin (JWT)
-🗂️ Architecture du projet
-nantes-wifi-solutions-backend/
-├── src/
-│   ├── config/                # Configuration (DB, CORS, rate limit)
-│   │   ├── db.ts
-│   │   ├── cors.config.ts
-│   │   └── rateLimit.config.ts
-│   │
-│   ├── controllers/           # Logique métier (API handlers)
-│   │   ├── contact.controller.ts
-│   │   ├── offer.controller.ts
-│   │   └── admin.controller.ts
-│   │
-│   ├── middlewares/           # Middlewares (auth, validation, sécurité)
-│   │   ├── validate.middleware.ts
-│   │   ├── sanitize.middleware.ts
-│   │   └── auth.middleware.ts
-│   │
-│   ├── models/                # Schémas MongoDB (Mongoose)
-│   │   ├── contact.model.ts
-│   │   ├── offer.model.ts
-│   │   └── admin.model.ts
-│   │
-│   ├── routes/                # Routes API
-│   │   ├── contact.routes.ts
-│   │   ├── offer.routes.ts
-│   │   └── admin.routes.ts
-│   │
-│   ├── services/              # Services métier
-│   │   ├── mail.service.ts    # Envoi emails (Brevo)
-│   │   ├── pdf.service.ts     # Génération devis PDF
-│   │   └── jwt.service.ts     # Auth JWT
-│   │
-│   ├── validators/            # Schémas Zod
-│   │   ├── contact.validator.ts
-│   │   └── auth.validator.ts
-│   │
-│   ├── app.ts                 # Configuration Express
-│   └── index.ts               # Point d’entrée serveur
-│
-├── .env.example
-├── package.json
-├── tsconfig.json
-└── README.md
-🚀 Installation
-📌 Prérequis
-Node.js >= 18
-MongoDB Atlas (ou local)
-Compte Brevo (SMTP / API email)
-⚙️ Étapes
-# 1. Cloner le projet
-git clone https://github.com/ton-compte/nantes-wifi-solutions-backend.git
+Le projet démontre volontairement les deux familles de bases demandées par le référentiel :
+
+- **MongoDB / Mongoose (NoSQL)** : demandes de contact et messages à structure évolutive ;
+- **PostgreSQL / Prisma (SQL relationnel)** : administrateurs, services et offres commerciales ;
+- relation SQL **Service 1,N Offre**, clés étrangères, contraintes, index et migration versionnée.
+
+## Fonctionnalités
+
+- création et validation des demandes de contact ;
+- catalogue d'offres lu depuis PostgreSQL ;
+- authentification administrateur avec mot de passe bcrypt et JWT ;
+- consultation sécurisée des contacts MongoDB ;
+- génération de devis PDF et notifications email ;
+- Helmet, CORS, rate limiting, validation Zod et nettoyage des entrées.
+
+## Prérequis
+
+- Node.js 20.19 ou supérieur ;
+- Docker Desktop, ou des instances locales de PostgreSQL et MongoDB.
+
+## Installation
+
+```bash
+git clone https://github.com/medyou21/nantes-wifi-solutions-backend.git
 cd nantes-wifi-solutions-backend
-
-# 2. Installer les dépendances
+git switch certification-dwwm
 npm install
-
-# 3. Configurer les variables d’environnement
 cp .env.example .env
-
-# 4. Lancer en développement
+docker compose up -d
+npm run prisma:generate
+npm run prisma:deploy
+npm run prisma:seed
 npm run dev
-🔐 Variables d’environnement
+```
 
-Créer un fichier .env :
+L'API écoute par défaut sur `http://localhost:5000`.
 
-PORT=5000
-NODE_ENV=development
+## Variables d'environnement
 
-MONGO_URI=your_mongodb_uri
-CLIENT_URL=http://localhost:5173
+| Variable | Usage |
+|---|---|
+| `MONGO_URI` | Connexion MongoDB des contacts |
+| `DATABASE_URL` | Connexion PostgreSQL Prisma |
+| `JWT_SECRET` | Signature des jetons |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Création du compte par le seed |
+| `CLIENT_URL` | Origine frontend autorisée |
+| `BREVO_API_KEY` | Envoi d'emails |
+| `MAIL_FROM` / `MAIL_TO` | Expéditeur et destinataire |
 
-BREVO_API_KEY=your_brevo_api_key
-MAIL_FROM=contact@domain.com
-MAIL_TO=admin@domain.com
+Ne jamais enregistrer le fichier `.env` dans Git.
 
-JWT_SECRET=your_jwt_secret
+## API
 
+| Méthode | Route | Accès | Stockage |
+|---|---|---|---|
+| POST | `/api/contacts` | Public, limité | MongoDB |
+| GET | `/api/offers` | Public | PostgreSQL |
+| POST | `/api/admin/login` | Public, limité | PostgreSQL |
+| GET | `/api/admin/contacts` | JWT | MongoDB |
 
-📜 Scripts disponibles
-Commande	Description
-npm run dev	Lancement développement (hot reload)
-npm run build	Compilation TypeScript
-npm start	Lancement production
+## Modèle relationnel
 
+```text
+ADMIN
+- id (PK)
+- email (UNIQUE)
+- passwordHash
+- role
+- active
 
-🔌 API Endpoints
-📦 Offres
-Méthode	Route	Description
-GET	/api/offers	Liste des offres
-📩 Contacts
-Méthode	Route	Description
-POST	/api/contacts	Envoyer un message + génération devis PDF
-🔐 Admin
-Méthode	Route	Description
-POST	/api/admin/login	Connexion admin
-GET	/api/admin/contacts	Liste des contacts (protégé JWT)
-📄 Génération de devis (PDF)
+SERVICE 1 ───── N OFFER
+- id (PK)        - id (PK)
+- slug UNIQUE    - serviceId (FK)
+- name           - title UNIQUE
+                  - priceCents
+```
 
-Lorsqu’un contact est envoyé :
+Le schéma Prisma est dans `prisma/schema.prisma`. La migration SQL explicite se trouve dans `prisma/migrations/`.
 
-génération automatique d’un devis PDF personnalisé
-envoi email au client
-envoi email à l’admin
-numéro de devis unique (DEV-YYYYMM-XXXX)
-🛡️ Sécurité
+## Structure
 
-✔ Helmet (headers HTTP sécurisés)
-✔ CORS configuré
-✔ Rate limiting (anti spam / brute force)
-✔ Sanitization NoSQL injection
-✔ Validation Zod (backend strict)
-✔ JWT authentication
+```text
+prisma/
+  schema.prisma
+  seed.ts
+  migrations/
+src/
+  config/        # MongoDB, PostgreSQL, CORS, limites
+  controllers/   # composants métier
+  middlewares/   # sécurité et validation
+  models/        # documents MongoDB
+  routes/        # endpoints REST
+  services/      # email et PDF
+tests/
+```
 
-🧠 Stack technique
-Technologie	Rôle
-Express	API REST
-TypeScript	Typage fort
-MongoDB + Mongoose	Base de données
-Zod	Validation données
-Brevo API	Emails transactionnels
-PDFKit	Génération devis PDF
-JWT	Authentification
-dotenv	Variables d’environnement
-🚀 Améliorations possibles (roadmap)
-🔔 notifications Slack / Discord
-📊 dashboard admin (React)
-📦 stockage PDF (S3 / Cloudinary)
-🧠 scoring automatique des leads
-📈 analytics des demandes
-🐳 Docker + CI/CD
-📄 Licence
+## Vérification
 
-Projet privé — Nantes WiFi Solutions © 2026
+```bash
+npm run build
+npm test
+```
+
+Le test de santé vérifie notamment le comportement contrôlé des routes inconnues.
+
+## Choix techniques à présenter au jury
+
+- MongoDB convient aux demandes de contact, dont le contenu peut évoluer.
+- PostgreSQL garantit l'intégrité du catalogue et des comptes administrateurs.
+- Prisma fournit un accès typé, des migrations reproductibles et des requêtes SQL sécurisées.
+- Les secrets sont externalisés dans les variables d'environnement.
