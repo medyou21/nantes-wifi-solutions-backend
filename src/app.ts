@@ -25,6 +25,11 @@ import offerRoutes from "./routes/offer.routes";
 
 // Création de l'application Express
 const app = express();
+/**
+ * Cloudflare Tunnel agit comme proxy inverse devant Express.
+ * On autorise un niveau de proxy pour récupérer correctement req.ip.
+ */
+app.set("trust proxy", 1);
 
 /**
  * ─────────────────────────────────────────────
