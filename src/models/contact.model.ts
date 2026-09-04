@@ -12,6 +12,7 @@ export interface IContact extends Document {
   company?: string;    // Nom de l'entreprise (optionnel)
   service?: string;    // Service demandé (optionnel)
   message: string;     // Message envoyé (obligatoire)
+  status: 'new' | 'contacted' | 'closed';
 
   createdAt: Date;     // Date de création (ajoutée automatiquement)
   updatedAt: Date;     // Date de mise à jour (ajoutée automatiquement)
@@ -60,6 +61,14 @@ const contactSchema = new Schema<IContact>(
     message: {
       type: String,
       required: true
+    },
+
+    // État de traitement piloté depuis le back-office (partie UPDATE du CRUD)
+    status: {
+      type: String,
+      enum: ['new', 'contacted', 'closed'],
+      default: 'new',
+      index: true
     }
   },
 
