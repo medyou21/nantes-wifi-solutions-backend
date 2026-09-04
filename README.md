@@ -63,6 +63,17 @@ Ne jamais enregistrer le fichier `.env` dans Git.
 | GET | `/api/offers` | Public | PostgreSQL |
 | POST | `/api/admin/login` | Public, limité | PostgreSQL |
 | GET | `/api/admin/contacts` | JWT | MongoDB |
+| PATCH | `/api/admin/contacts/:id/status` | JWT | MongoDB |
+| DELETE | `/api/admin/contacts/:id` | JWT | MongoDB |
+| GET | `/api/offers/admin` | JWT | PostgreSQL |
+| POST | `/api/offers/admin` | JWT + Zod | PostgreSQL |
+| PUT | `/api/offers/admin/:id` | JWT + Zod | PostgreSQL |
+| DELETE | `/api/offers/admin/:id` | JWT | PostgreSQL |
+
+Le CRUD des offres démontre les quatre opérations SQL depuis l'interface
+d'administration. L'authentification utilise un jeton Bearer : le navigateur
+ne l'envoie pas automatiquement, ce qui réduit l'exposition CSRF. CORS limite
+les origines, Zod valide les entrées et Helmet renforce les en-têtes HTTP.
 
 ## Modèle relationnel
 

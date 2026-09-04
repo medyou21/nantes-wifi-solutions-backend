@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { isValidObjectId } from "mongoose";
 import Contact from "../models/contact.model";
 import { generateToken } from "../utils/generateToken";
 import prisma from "../config/prisma";
@@ -82,5 +83,48 @@ export const getAdminContacts = async (
     res.status(500).json({
       message: "Erreur récupération contacts",
     });
+  }
+};
+
+/** Met à jour l'état de traitement d'une demande (UPDATE du CRUD MongoDB). */
+export const updateContactStatus = async (req: Request, res: Response): Promise<Response> => {
+  const { id } = req.params;
+  const { status } = req.body as { status?: string };
+  const allowedStatuses = ["new", "contacted", "closed"];
+
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Identifiant de contact invalide" });
+  }
+  if (!status || !allowedStatuses.includes(status)) {
+    return res.status(400).json({ message: "Statut invalide" });
+  }
+
+  try {
+    const contact = await Contact.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true, runValidators: true },
+    );
+
+    if (!contact) return res.status(404).json({ message: "Contact introuvable" });
+    return res.status(200).json(contact);
+  } catch {
+    return res.status(500).json({ message: "Erreur lors de la mise à jour du contact" });
+  }
+};
+
+/** Supprime définitivement une demande (DELETE du CRUD MongoDB). */
+export const deleteContact = async (req: Request, res: Response): Promise<Response> => {
+  const { id } = req.params;
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({ message: "Identifiant de contact invalide" });
+  }
+
+  try {
+    const contact = await Contact.findByIdAndDelete(id);
+    if (!contact) return res.status(404).json({ message: "Contact introuvable" });
+    return res.status(204).send();
+  } catch {
+    return res.status(500).json({ message: "Erreur lors de la suppression du contact" });
   }
 };
